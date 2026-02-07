@@ -45,7 +45,7 @@ def call_claude(prompt: str, system: str = "", max_tokens: int = 1000, model: st
         raise RuntimeError(f"Claude API error {e.code}: {error_body}")
 
 
-def summarize_paper(paper: dict, max_tokens: int = 300) -> str:
+def summarize_paper(paper: dict, max_tokens: int = 150) -> str:
     """Generate a concise summary and commentary for a paper."""
     system = """You are writing for a monthly tokenization research newsletter. 
 Your audience is a mix of seasoned NLP researchers and students interested in tokenization.
@@ -53,7 +53,7 @@ Write a concise, informative summary that:
 1. Explains what the paper does in 2-3 sentences
 2. Highlights why it matters for tokenization research
 3. Notes any interesting methodological choices or findings
-Keep it under 150 words. Be direct and substantive, not hype-y."""
+Keep it under 80 words. Be direct and substantive, not hype-y."""
 
     prompt = f"""Summarize this paper for the newsletter:
 
@@ -66,10 +66,10 @@ Write a brief, informative summary with commentary."""
     return call_claude(prompt, system=system, max_tokens=max_tokens)
 
 
-def generate_editorial(papers: list[dict], max_tokens: int = 1000) -> str:
+def generate_editorial(papers: list[dict], max_tokens: int = 300) -> str:
     """Generate an editorial connecting the month's papers into a narrative."""
     system = """You are the editor of "Tokenization Digest," a monthly newsletter about LLM tokenization research.
-Write a brief editorial (200-300 words) that:
+Write a brief editorial (100-200 words) that:
 1. Opens with a compelling observation about this month's collection
 2. Identifies themes or trends across the papers
 3. Highlights 1-2 papers that are particularly noteworthy and why
@@ -96,7 +96,7 @@ Write the editorial."""
     return call_claude(prompt, system=system, max_tokens=max_tokens)
 
 
-def batch_summarize(papers: list[dict], max_tokens_per_summary: int = 300) -> list[dict]:
+def batch_summarize(papers: list[dict], max_tokens_per_summary: int = 150) -> list[dict]:
     """Summarize all papers, adding 'summary' field to each."""
     for paper in papers:
         try:
