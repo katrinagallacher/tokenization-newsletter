@@ -116,7 +116,7 @@ def run_pipeline(config_path: str = "config.yaml", issue_number: int = 1,
         # Save raw results
         output_path = Path("output") / f"collected_{datetime.now().strftime('%Y%m%d')}.json"
         output_path.parent.mkdir(exist_ok=True)
-        with open(output_path, "w") as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             json.dump({"raw": all_papers, "filtered": filtered}, f, indent=2)
         print(f"💾 Saved collected data to {output_path}")
         return {"papers": filtered}
