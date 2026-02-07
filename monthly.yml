@@ -1,0 +1,77 @@
+name: Generate Tokenization Newsletter
+
+on:
+  # Run on the 1st of every month at 9:00 UTC
+  schedule:
+    - cron: '0 9 1 * *'
+  
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Issue number'
+        required: true
+        default: '1'
+      dry_run:
+        description: 'Dry run (no Claude API calls)'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  generate-newsletter:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Calculate issue number
+        id: issue
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "number=${{ github.event.inputs.issue_number }}" >> $GITHUB_OUTPUT
+          else
+            # Auto-calculate based on months since first issue
+            # Adjust START_YEAR and START_MONTH to when you publish issue #1
+            START_YEAR=2025
+            START_MONTH=2
+            CURRENT_YEAR=$(date +%Y)
+            CURRENT_MONTH=$(date +%-m)
+            ISSUE=$(( (CURRENT_YEAR - START_YEAR) * 12 + CURRENT_MONTH - START_MONTH + 1 ))
+            echo "number=$ISSUE" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run pipeline
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            python -m src.pipeline --issue ${{ steps.issue.outputs.number }} --dry-run
+          else
+            python -m src.pipeline --issue ${{ steps.issue.outputs.number }}
+          fi
+
+      - name: Upload newsletter artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: newsletter-issue-${{ steps.issue.outputs.number }}
+          path: output/
+          retention-days: 90
+
+      - name: Commit output to repo
+        run: |
+          git config user.name "Newsletter Bot"
+          git config user.email "bot@tokenization-digest.dev"
+          git add output/
+          git diff --staged --quiet || git commit -m "📰 Issue #${{ steps.issue.outputs.number }} - $(date +%B\ %Y)"
+          git push
