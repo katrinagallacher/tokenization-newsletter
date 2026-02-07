@@ -58,8 +58,8 @@ twitter:
 # Claude API settings
 claude:
   model: "claude-sonnet-4-20250514"
-  max_tokens_summary: 300
-  max_tokens_editorial: 1000
+  max_tokens_summary: 150
+  max_tokens_editorial: 300
 
 # Newsletter settings
 newsletter:
