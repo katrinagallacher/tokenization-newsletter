@@ -8,7 +8,7 @@ import urllib.request
 ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
 
 
-def call_claude(prompt: str, system: str = "", max_tokens: int = 1000, model: str = "claude-sonnet-4-5-20250514") -> str:
+def call_claude(prompt: str, system: str = "", max_tokens: int = 1000, model: str = "claude-sonnet-4-20250514") -> str:
     """Call Claude API and return the response text."""
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
