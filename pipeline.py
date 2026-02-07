@@ -152,13 +152,13 @@ def run_pipeline(config_path: str = "config.yaml", issue_number: int = 1,
     html_path = output_dir / f"issue_{issue_number}_{date_slug}.html"
     json_path = output_dir / f"issue_{issue_number}_{date_slug}_data.json"
 
-    with open(md_path, "w") as f:
+    with open(md_path, "w", encoding="utf-8") as f:
         f.write(md_output)
 
-    with open(html_path, "w") as f:
+    with open(html_path, "w", encoding="utf-8") as f:
         f.write(html_output)
 
-    with open(json_path, "w") as f:
+    with open(json_path, "w", encoding="utf-8") as f:
         json.dump({
             "issue": issue_number,
             "date": date_str,
