@@ -47,13 +47,10 @@ def call_claude(prompt: str, system: str = "", max_tokens: int = 1000, model: st
 
 def summarize_paper(paper: dict, max_tokens: int = 150) -> str:
     """Generate a concise summary and commentary for a paper."""
-    system = """You are writing for a monthly tokenization research newsletter. 
-Your audience is a mix of seasoned NLP researchers and students interested in tokenization.
-Write a concise, informative summary that:
-1. Explains what the paper does in 2-3 sentences
-2. Highlights why it matters for tokenization research
-3. Notes any interesting methodological choices or findings
-Keep it under 80 words. Be direct and substantive, not hype-y."""
+    system = """You are writing for a monthly tokenization research newsletter.
+Write a single flowing paragraph summarizing the paper: what it does, key findings, and why it matters.
+No bold text, no labels, no bullet points.
+Just smooth, readable, technically precise prose. Keep it under 80 words."""
 
     prompt = f"""Summarize this paper for the newsletter:
 
