@@ -48,6 +48,19 @@ google_scholar:
   # Go to scholar.google.com -> Create Alert -> get RSS feed URL
   alert_feeds: []
 
+# LessWrong
+lesswrong:
+  enabled: true
+
+# Alignment Forum (EA Forum)
+alignment_forum:
+  enabled: true
+
+# Web search (Medium, Substack, Emergent Mind, blogs)
+# Uses Claude API with web search - costs ~$0.05 per run
+web_search:
+  enabled: true
+
 # Twitter/X accounts to monitor (manual for now - API is expensive)
 twitter:
   accounts_to_check:
@@ -57,9 +70,9 @@ twitter:
 
 # Claude API settings
 claude:
-  model: "claude-sonnet-4-20250514"
-  max_tokens_summary: 250
-  max_tokens_editorial: 500
+  model: "claude-sonnet-4-5-20250514"
+  max_tokens_summary: 300
+  max_tokens_editorial: 1000
 
 # Newsletter settings
 newsletter:
