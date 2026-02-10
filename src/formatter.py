@@ -64,6 +64,9 @@ def generate_markdown(papers: list[dict], editorial: str, issue_number: int = 1,
                 "semantic_scholar": "Semantic Scholar",
                 "huggingface_blog": "Hugging Face Blog",
                 "google_scholar": "Google Scholar",
+                "lesswrong": "LessWrong",
+                "alignment_forum": "Alignment Forum",
+                "web": "Web",
             }.get(source, source)
             meta_parts.append(f"**Found via:** {source_label}")
 
