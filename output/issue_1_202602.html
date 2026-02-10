@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Tokenization Digest — Issue #1</title>
+<style>
+body { font-family: Georgia, serif; max-width: 680px; margin: 0 auto; padding: 20px; color: #333; line-height: 1.6; }
+h1 { font-size: 28px; margin-bottom: 5px; }
+h2 { font-size: 22px; color: #555; border-bottom: 1px solid #ddd; padding-bottom: 8px; }
+h3 { font-size: 18px; margin-bottom: 5px; }
+.subtitle { color: #888; font-style: italic; margin-bottom: 30px; }
+.meta { font-size: 14px; color: #666; margin-bottom: 10px; }
+.summary { margin: 15px 0; }
+.paper-link { font-size: 14px; }
+hr { border: none; border-top: 1px solid #eee; margin: 25px 0; }
+.editorial { font-size: 16px; line-height: 1.7; }
+.footer { font-size: 14px; color: #888; margin-top: 40px; }
+</style>
+</head>
+<body>
+
+<h1>Tokenization Digest — Issue #1</h1>
+<p class="subtitle">February 2026</p>
+<hr>
+<h2>Editor's Note</h2>
+<p class="editorial">**The Tokenization Renaissance: From Afterthought to Architecture**</p>
+<p class="editorial">This month's collection reveals a field in profound transition. For too long, tokenization has been treated as a preprocessing detail—a necessary evil before the "real" work of training large language models. Yet as Alqahtani and colleagues bluntly observe, we've been taking tokenizers for granted when they should be recognized as core design decisions. This shift from afterthought to architecture permeates nearly every paper we've assembled.</p>
+<p class="editorial">The theoretical foundations are finally catching up to practice. Erdogan's information-theoretic lens provides the mathematical rigor this field has desperately needed, while Roberts' empirical analysis exposes uncomfortable truths about our "stable currency" of tokens. Meanwhile, the practical innovations are equally compelling: Sun's LiteToken tackles the overlooked problem of intermediate merge residues, and Zai's Peek2 demonstrates that even seemingly solved problems like pretokenization can benefit from ground-up reimplementation.</p>
+<p class="editorial">Two papers particularly caught my attention. Liyanage and Yvon's AdaptBPE addresses the fundamental tension between general-purpose and specialized tokenizers—a problem that becomes more acute as models tackle increasingly diverse domains. Their approach suggests we might not need to choose between universality and specialization. Equally intriguing is Situngkir's syllabic approach for Indonesian, which reminds</p>
+<hr>
+<h2>This Month's Papers & Posts</h2>
+<h3>1. AdaptBPE: From General Purpose to Specialized Tokenizers</h3>
+<p class="meta"><strong>Authors:</strong> Vijini Liyanage, François Yvon · <strong>Published:</strong> 2026-01-29</p>
+<p class="paper-link">🔗 <a href="https://arxiv.org/abs/2601.21665v1">https://arxiv.org/abs/2601.21665v1</a></p>
+<p class="summary">AdaptBPE addresses the inefficiency of using generic tokenizers across all domains by introducing a post-training adaptation strategy that selectively replaces underutilized tokens with domain-specific alternatives based on frequency patterns in target corpora. The method identifies optimal token inventories for given vocabulary sizes, demonstrating superior compression efficiency compared to baseline approaches across multiple languages and tasks in both generation and classification settings. This lightweight adaptation mechanism functions as a vocabulary-level fine-tuning process, offering practitioners a computationally efficient way to optimize tokenization for specialized domains without retraining entire models, potentially improving both performance and computational efficiency in domain-specific applications.</p>
+<hr>
+<h3>2. An Information-Theoretic Perspective on LLM Tokenizers</h3>
+<p class="meta"><strong>Authors:</strong> Mete Erdogan, A. Gorle, Shubham Chandak et al. (5 authors) · <strong>Published:</strong> 2026-01-14</p>
+<p class="paper-link">🔗 <a href="https://arxiv.org/abs/2601.09039">https://arxiv.org/abs/2601.09039</a></p>
+<p class="summary">This paper takes an information-theoretic lens to understand how LLM tokenizers function as structured compressors, revealing a fascinating entropy redistribution phenomenon where larger training scales produce token streams with higher overall diversity yet greater local predictability. The authors demonstrate through comprehensive benchmarking that tokenizers effectively absorb short-range textual regularities but suffer degraded compression under domain mismatch, leading them to develop a compression-aware BPE variant and capacity-utilization metrics for analyzing tokenizer behavior. This work provides crucial theoretical grounding for tokenizer design by exposing fundamental trade-offs between compression efficiency, induced statistical structure, and cross-domain robustness—insights that could inform more principled approaches to tokenization in</p>
+<hr>
+<h3>3. SampoNLP: A Self-Referential Toolkit for Morphological Analysis of Subword Tokenizers</h3>
+<p class="meta"><strong>Authors:</strong> Iaroslav Chelombitko, Ekaterina Chelombitko, Aleksey Komissarov · <strong>Published:</strong> 2026-01-08</p>
+<p class="paper-link">🔗 <a href="https://arxiv.org/abs/2601.04469v1">https://arxiv.org/abs/2601.04469v1</a></p>
+<p class="summary">SampoNLP presents a novel corpus-free toolkit that addresses a critical gap in evaluating subword tokenizers for morphologically complex Uralic languages like Finnish, Hungarian, and Estonian. The researchers develop a Self-Referential Atomicity Scoring method inspired by Minimum Description Length principles to automatically generate high-quality morpheme lexicons without requiring pre-existing linguistic resources—particularly valuable for low-resource language settings. Using these generated lexicons, they conduct systematic BPE tokenizer evaluations across vocabulary sizes from 8k to 256k tokens, introducing an Integrated Performance Score that balances morpheme coverage against over-splitting issues. Their analysis reveals optimal vocabulary size "elbow points" and provides</p>
+<hr>
+<h3>4. LiteToken: Removing Intermediate Merge Residues From BPE Tokenizers</h3>
+<p class="meta"><strong>Authors:</strong> Yike Sun, Haotong Yang, Zhouchen Lin et al. (4 authors) · <strong>Published:</strong> 2026-02-04</p>
+<p class="paper-link">🔗 <a href="https://arxiv.org/abs/2602.04706v1">https://arxiv.org/abs/2602.04706v1</a></p>
+<p class="summary">This paper addresses a subtle but important inefficiency in BPE tokenizers, identifying "intermediate merge residues"—tokens that appear frequently during the initial vocabulary construction phase but are rarely used during actual text processing because they get absorbed into longer tokens. Sun et al. demonstrate that these residual tokens, while consuming valuable vocabulary space, contribute little to tokenization quality and can make models more vulnerable to adversarial inputs. Their LiteToken method systematically removes these underutilized tokens, resulting in more compact vocabularies that fragment text less aggressively and handle noisy inputs more robustly, often without requiring model retraining—a practically valuable finding for improving tokenizer efficiency.</p>
+<hr>
+<h3>5. Stop Taking Tokenizers for Granted: They Are Core Design Decisions in Large Language Models</h3>
+<p class="meta"><strong>Authors:</strong> Sawsan Alqahtani, Mir Tafseer Nayeem, Md Tahmid Rahman Laskar et al. (5 authors) · <strong>Published:</strong> 2026-01-19</p>
+<p class="paper-link">🔗 <a href="https://arxiv.org/abs/2601.13260v2">https://arxiv.org/abs/2601.13260v2</a></p>
+<p class="summary">This paper challenges the field's casual treatment of tokenization, arguing that subword methods like Byte Pair Encoding represent fundamental modeling choices rather than mere preprocessing steps. The authors demonstrate how current tokenization approaches misalign with linguistic structure, amplify biases, and inefficiently allocate capacity across different languages and domains. They propose a context-aware framework that treats tokenizer design as integral to model architecture, emphasizing co-design guided by linguistic principles, domain requirements, and deployment constraints. The work calls for standardized evaluation protocols and transparent reporting to make tokenization decisions more accountable, suggesting that thoughtful tokenization could significantly improve language model fairness, efficiency, and adaptability across diverse applications.</p>
+<hr>
+<h3>6. DSA-Tokenizer: Disentangled Semantic-Acoustic Tokenization via Flow Matching-based Hierarchical Fusion</h3>
+<p class="meta"><strong>Authors:</strong> Hanlin Zhang, Daxin Tan, Dehua Tao et al. (9 authors) · <strong>Published:</strong> 2026-01-14</p>
+<p class="paper-link">🔗 <a href="https://arxiv.org/abs/2601.09239">https://arxiv.org/abs/2601.09239</a></p>
+<p class="summary">DSA-Tokenizer introduces a novel approach to speech tokenization by explicitly separating semantic content from acoustic style through distinct optimization pathways—semantic tokens trained via automatic speech recognition to capture linguistic meaning, while acoustic tokens focus on mel-spectrogram reconstruction to encode prosodic and speaker characteristics. The method employs a hierarchical Flow-Matching decoder to eliminate rigid length constraints between token sequences and uses joint reconstruction-recombination training to enforce clean separation. This disentangled representation enables controllable speech generation where content and style can be independently manipulated, addressing a key limitation in existing speech tokenizers that either sacrifice semantic fidelity or fail to achieve complete disentanglement, potentially advancing the development of more flexible Speech</p>
+<hr>
+<h3>7. BBPE16: UTF-16-based byte-level byte-pair encoding for improved multilingual speech recognition</h3>
+<p class="meta"><strong>Authors:</strong> Hyunsik Kim, Haeri Kim, Munhak Lee et al. (4 authors) · <strong>Published:</strong> 2026-02-02</p>
+<p class="paper-link">🔗 <a href="https://arxiv.org/abs/2602.01717v1">https://arxiv.org/abs/2602.01717v1</a></p>
+<p class="summary">BBPE16 addresses a fundamental inefficiency in multilingual speech recognition by replacing UTF-8 with UTF-16 as the foundation for byte-level byte-pair encoding tokenization. While UTF-8's variable-length encoding creates bloated token sequences for Chinese, Japanese, and Korean scripts, UTF-16's uniform 2-byte representation significantly reduces this overhead while maintaining full Unicode coverage and language-agnostic properties. The authors demonstrate that BBPE16 achieves comparable or superior accuracy across various multilingual ASR scenarios while reducing Chinese token counts by up to 10.4% and decoding iterations by 10.3%, translating to faster training, inference, and reduced memory consumption—a compelling</p>
+<hr>
+<h3>8. How Long Is a Piece of String? A Brief Empirical Analysis of Tokenizers</h3>
+<p class="meta"><strong>Authors:</strong> Jonathan Roberts, Kai Han, Samuel Albanie · <strong>Published:</strong> 2026-01-16</p>
+<p class="paper-link">🔗 <a href="https://arxiv.org/abs/2601.11518">https://arxiv.org/abs/2601.11518</a></p>
+<p class="summary">This empirical study challenges the widespread assumption that tokens function as a stable "currency" for comparing language models across different contexts. Roberts, Han, and Albanie systematically analyze how tokenization varies significantly across models and text domains, revealing that commonly used heuristics for estimating token lengths are overly simplistic and potentially misleading. By examining compression rates of diverse textual data into tokens, the research exposes substantial inconsistencies that make direct model comparisons and pricing estimates problematic. These findings have important implications for practitioners who rely on token-based metrics for model selection, cost estimation, and performance evaluation in the rapidly expanding LLM ecosystem.</p>
+<hr>
+<h3>9. Syllabic Agglutinative Tokenizations for Indonesian LLM: A Study from Gasing Literacy Learning System</h3>
+<p class="meta"><strong>Authors:</strong> H. Situngkir, A. B. Lumbantobing, Y. Surya · <strong>Published:</strong> 2026-01-14</p>
+<p class="paper-link">🔗 <a href="https://arxiv.org/abs/2601.11643v1">https://arxiv.org/abs/2601.11643v1</a></p>
+<p class="summary">This research introduces a syllable-based tokenization approach for Indonesian that draws inspiration from pedagogical literacy methods, specifically the Gasing Learning System. The authors segment Indonesian text at syllable boundaries before applying byte-pair encoding, creating a compact 3,500-token vocabulary that respects the language's agglutinative morphological structure. Their method achieves impressive efficiency gains, demonstrating a Rényi efficiency of 0.74 compared to 0.50-0.64 for existing multilingual tokenizers, while maintaining longer average token lengths despite using a significantly smaller vocabulary. The approach successfully internalizes character-level dependencies within syllable units, reducing computational demands while preserving linguistically meaningful structures,</p>
+<hr>
+<h3>10. Peek2: A Regex-free implementation of pretokenizers for Byte-level BPE</h3>
+<p class="meta"><strong>Authors:</strong> Liu Zai · <strong>Published:</strong> 2026-01-09</p>
+<p class="paper-link">🔗 <a href="https://arxiv.org/abs/2601.05833v1">https://arxiv.org/abs/2601.05833v1</a></p>
+<p class="summary">Peek2 presents a regex-free alternative to the pretokenization step in popular Byte-level BPE tokenizers used by GPT-3, LLaMA-3, and Qwen-2.5. By eliminating regex dependencies while maintaining identical segmentation results, the implementation achieves a 1.11× throughput improvement with stable O(n) complexity and CPU-only operation. This work addresses a performance bottleneck in the tokenization pipeline, offering practitioners a drop-in replacement that enhances speed without sacrificing compatibility—a meaningful contribution given the ubiquity of these tokenizers in production language model systems.</p>
+<hr>
+
+<div class="footer">
+<h2>About</h2>
+<p><strong>Tokenization Digest</strong> is a monthly newsletter tracking research and developments 
+in LLM tokenization. Whether you're a seasoned researcher or just getting started, we aim to keep 
+you informed about what's happening in this foundational area of language modeling.</p>
+<p><em>Have a paper, post, or project related to tokenization? Reply to this newsletter or reach out!</em></p>
+</div>
+</body>
+</html>
