@@ -29,7 +29,7 @@ class Post:
 
 
 LESSWRONG_GRAPHQL = "https://www.lesswrong.com/graphql"
-ALIGNMENT_FORUM_GRAPHQL = "https://forum.effectivealtruism.org/graphql"
+ALIGNMENT_FORUM_GRAPHQL = "https://www.alignmentforum.org/graphql"
 
 
 def _query_forum(graphql_url: str, keywords: list[str], lookback_days: int = 35, limit: int = 50) -> list[dict]:
@@ -138,7 +138,7 @@ def fetch_alignment_forum(keywords: list[str], lookback_days: int = 35) -> list[
     print("    Querying Alignment Forum...")
     raw = _query_forum(ALIGNMENT_FORUM_GRAPHQL, keywords, lookback_days, limit=100)
     filtered = _filter_by_keywords(raw, keywords)
-    posts = [_format_post(p, "alignment_forum", "https://forum.effectivealtruism.org") for p in filtered]
+    posts = [_format_post(p, "alignment_forum", "https://www.alignmentforum.org") for p in filtered]
     return posts
 
 
