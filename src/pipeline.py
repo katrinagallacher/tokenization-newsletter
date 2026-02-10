@@ -23,6 +23,8 @@ from src.collectors.arxiv import search_arxiv
 from src.collectors.semantic_scholar import search_semantic_scholar
 from src.collectors.huggingface_blog import fetch_huggingface_blog
 from src.collectors.google_scholar import fetch_google_scholar_alerts
+from src.collectors.lesswrong import fetch_lesswrong, fetch_alignment_forum
+from src.collectors.web_search import search_web_sources
 from src.filter import filter_and_rank
 from src.summarizer import batch_summarize, generate_editorial
 from src.formatter import generate_markdown, generate_html
@@ -80,6 +82,31 @@ def collect_all(config: dict) -> list[dict]:
     else:
         print("⏭️  No Google Scholar alert feeds configured, skipping")
 
+    # LessWrong
+    print("📝 Collecting from LessWrong...")
+    lw_posts = fetch_lesswrong(keywords=primary_kw, lookback_days=lookback)
+    print(f"   Found {len(lw_posts)} posts")
+    all_papers.extend(p.to_dict() for p in lw_posts)
+
+    # Alignment Forum
+    print("🔍 Collecting from Alignment Forum...")
+    af_posts = fetch_alignment_forum(keywords=primary_kw, lookback_days=lookback)
+    print(f"   Found {len(af_posts)} posts")
+    all_papers.extend(p.to_dict() for p in af_posts)
+
+    # Web search (Medium, Substack, Emergent Mind, blogs, Twitter)
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        print("🌐 Collecting from web (Medium, Substack, blogs, Emergent Mind)...")
+        web_posts = search_web_sources(
+            keywords=primary_kw,
+            lookback_days=lookback,
+            model=config.get("claude", {}).get("model", "claude-sonnet-4-20250514"),
+        )
+        print(f"   Found {len(web_posts)} posts")
+        all_papers.extend(p.to_dict() for p in web_posts)
+    else:
+        print("⏭️  No ANTHROPIC_API_KEY set, skipping web search collector")
+
     return all_papers
 
 
@@ -116,7 +143,7 @@ def run_pipeline(config_path: str = "config.yaml", issue_number: int = 1,
         # Save raw results
         output_path = Path("output") / f"collected_{datetime.now().strftime('%Y%m%d')}.json"
         output_path.parent.mkdir(exist_ok=True)
-        with open(output_path, "w", encoding="utf-8") as f:
+        with open(output_path, "w") as f:
             json.dump({"raw": all_papers, "filtered": filtered}, f, indent=2)
         print(f"💾 Saved collected data to {output_path}")
         return {"papers": filtered}
@@ -152,13 +179,13 @@ def run_pipeline(config_path: str = "config.yaml", issue_number: int = 1,
     html_path = output_dir / f"issue_{issue_number}_{date_slug}.html"
     json_path = output_dir / f"issue_{issue_number}_{date_slug}_data.json"
 
-    with open(md_path, "w", encoding="utf-8") as f:
+    with open(md_path, "w") as f:
         f.write(md_output)
 
-    with open(html_path, "w", encoding="utf-8") as f:
+    with open(html_path, "w") as f:
         f.write(html_output)
 
-    with open(json_path, "w", encoding="utf-8") as f:
+    with open(json_path, "w") as f:
         json.dump({
             "issue": issue_number,
             "date": date_str,
