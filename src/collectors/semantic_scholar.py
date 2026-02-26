@@ -87,6 +87,9 @@ def search_semantic_scholar(keywords: list[str], max_results: int = 30, lookback
         except Exception as e:
             print(f"Error searching Semantic Scholar for '{keyword}': {e}")
 
+        import time
+        time.sleep(10)
+
     # Deduplicate by title similarity (simple lowercase match)
     seen_titles = set()
     unique = []
