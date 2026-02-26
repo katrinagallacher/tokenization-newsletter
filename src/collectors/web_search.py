@@ -124,9 +124,26 @@ Return results as a JSON array of objects with those fields.
 Return ONLY the JSON array, nothing else. No markdown formatting.
 Example: [{{"title": "...", "author": "...", "url": "...", "summary": "...", "published": "...", "platform": "..."}}]"""
 
-    try:
-        response_text = _call_claude_with_search(prompt, system=system, model=model)
+    import time
+    response_text = ""
+    for attempt in range(3):
+        try:
+            if attempt > 0:
+                print(f"    Retry {attempt}/2, waiting 30s...")
+                time.sleep(30)
+            response_text = _call_claude_with_search(prompt, system=system, model=model)
+            break
+        except RuntimeError as e:
+            if "rate_limit" in str(e) and attempt < 2:
+                continue
+            else:
+                print(f"Error in web search collector: {e}")
+                return []
+        except Exception as e:
+            print(f"Error in web search collector: {e}")
+            return []
 
+    try:
         # Clean up response - remove any markdown formatting
         response_text = response_text.strip()
         if response_text.startswith("```"):
@@ -158,9 +175,6 @@ Example: [{{"title": "...", "author": "...", "url": "...", "summary": "...", "pu
     except json.JSONDecodeError as e:
         print(f"Error parsing web search results as JSON: {e}")
         print(f"Raw response: {response_text[:500]}")
-        return []
-    except Exception as e:
-        print(f"Error in web search collector: {e}")
         return []
 
 
