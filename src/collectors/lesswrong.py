@@ -43,9 +43,7 @@ def _query_forum(graphql_url: str, keywords: list[str], lookback_days: int = 35,
     {
         posts(input: {
             terms: {
-                view: "new"
                 limit: %d
-                after: "%s"
             }
         }) {
             results {
@@ -65,7 +63,7 @@ def _query_forum(graphql_url: str, keywords: list[str], lookback_days: int = 35,
             }
         }
     }
-    """ % (limit, cutoff_str)
+    """ % (limit,)
 
     body = json.dumps({"query": query}).encode("utf-8")
 
