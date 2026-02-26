@@ -51,6 +51,11 @@ def compute_relevance_score(paper: dict, primary_keywords: list[str], secondary_
     citations = paper.get("citation_count", 0)
     if citations > 0:
         score += min(citations * 0.01, 0.1)
+
+    # Boost non-academic sources to ensure diversity
+    source = paper.get("source", "")
+    if source in ("web", "lesswrong", "alignment_forum", "huggingface_blog"):
+        score += 0.15
     
     return min(score, 1.0)
 
@@ -102,8 +107,19 @@ def filter_and_rank(
     # Filter by minimum relevance
     papers = [p for p in papers if p["relevance_score"] >= min_relevance]
     
-    # Sort by relevance (primary) and date (secondary)
-    papers.sort(key=lambda p: (p["relevance_score"], p.get("published", "")), reverse=True)
+    # Sort by relevance, but reserve at least 2 slots for non-academic sources
+    academic = [p for p in papers if p.get("source") in ("arxiv", "semantic_scholar", "google_scholar")]
+    non_academic = [p for p in papers if p.get("source") not in ("arxiv", "semantic_scholar", "google_scholar")]
+    
+    academic.sort(key=lambda p: (p["relevance_score"], p.get("published", "")), reverse=True)
+    non_academic.sort(key=lambda p: (p["relevance_score"], p.get("published", "")), reverse=True)
+    
+    # Ensure at least 2 non-academic items if available
+    reserved = non_academic[:2]
+    remaining = academic + non_academic[2:]
+    remaining.sort(key=lambda p: (p["relevance_score"], p.get("published", "")), reverse=True)
+    
+    papers = reserved + remaining
     
     # Return top N
     return papers[:max_items]
