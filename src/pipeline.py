@@ -152,6 +152,10 @@ def run_pipeline(config_path: str = "config.yaml", issue_number: int = 1,
         print("🏁 Dry run complete. Papers above would be included in the newsletter.")
         return {"papers": filtered}
 
+    # Wait for rate limit window to reset
+    print("⏳ Waiting 60s for rate limit to reset...")
+    time.sleep(60)
+
     # Step 3: Summarize with Claude
     print("STEP 3: Generating summaries with Claude...")
     max_tokens = config["claude"]["max_tokens_summary"]
