@@ -88,7 +88,7 @@ def collect_all(config: dict) -> list[dict]:
     print(f"   Found {len(lw_posts)} posts")
     all_papers.extend(p.to_dict() for p in lw_posts)
     import time
-    time.sleep(2)
+    time.sleep(3)
 
     # Alignment Forum
     print("🔍 Collecting from Alignment Forum...")
