@@ -87,6 +87,8 @@ def collect_all(config: dict) -> list[dict]:
     lw_posts = fetch_lesswrong(keywords=primary_kw, lookback_days=lookback)
     print(f"   Found {len(lw_posts)} posts")
     all_papers.extend(p.to_dict() for p in lw_posts)
+    import time
+    time.sleep(2)
 
     # Alignment Forum
     print("🔍 Collecting from Alignment Forum...")
