@@ -50,16 +50,16 @@ def _query_forum(graphql_url: str, keywords: list[str], lookback_days: int = 35,
                 _id
                 title
                 slug
-                pageUrl
                 postedAt
                 baseScore
                 voteCount
                 commentCount
                 user {
                     username
-                    slug
                 }
-                plaintextExcerpt
+                contents {
+                    plaintextDescription
+                }
             }
         }
     }
