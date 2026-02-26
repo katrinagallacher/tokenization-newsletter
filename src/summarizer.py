@@ -99,7 +99,7 @@ def batch_summarize(papers: list[dict], max_tokens_per_summary: int = 150) -> li
     for paper in papers:
         try:
             paper["summary"] = summarize_paper(paper, max_tokens=max_tokens_per_summary)
-            time.sleep(5)  # wait between requests to avoid rate limit
+            time.sleep(30)  # wait between requests to avoid rate limit
         except Exception as e:
             print(f"Error summarizing '{paper.get('title', '?')}': {e}")
             paper["summary"] = f"*Summary unavailable.* Read the full paper: {paper.get('url', '')}"
