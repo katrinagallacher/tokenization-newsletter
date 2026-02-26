@@ -92,7 +92,9 @@ def _filter_by_keywords(posts: list[dict], keywords: list[str]) -> list[dict]:
     """Filter posts by tokenization-related keywords."""
     filtered = []
     for post in posts:
-        text = ((post.get("title") or "") + " " + (post.get("plaintextExcerpt") or "")).lower()
+        contents = post.get("contents") or {}
+        excerpt = contents.get("plaintextDescription") or post.get("plaintextExcerpt") or ""
+        text = ((post.get("title") or "") + " " + excerpt).lower()
         if any(kw.lower() in text for kw in keywords):
             filtered.append(post)
     return filtered
