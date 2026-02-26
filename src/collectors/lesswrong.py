@@ -99,24 +99,22 @@ def _filter_by_keywords(posts: list[dict], keywords: list[str]) -> list[dict]:
             filtered.append(post)
     return filtered
 
-
 def _format_post(post: dict, source: str, base_url: str) -> Post:
     """Convert a GraphQL result into a Post object."""
     user = post.get("user") or {}
     author = user.get("username", "Unknown")
-
     page_url = post.get("pageUrl", "")
     if not page_url and post.get("slug"):
         page_url = f"{base_url}/posts/{post.get('_id', '')}/{post['slug']}"
-
     posted_at = post.get("postedAt", "")
     if posted_at:
         posted_at = posted_at[:10]
-
+    contents = post.get("contents") or {}
+    excerpt = contents.get("plaintextDescription") or post.get("plaintextExcerpt") or ""
     return Post(
         title=post.get("title", "Untitled"),
         authors=[author],
-        abstract=(post.get("plaintextExcerpt") or "")[:500],
+        abstract=excerpt[:500],
         url=page_url,
         published=posted_at,
         source=source,
