@@ -130,7 +130,7 @@ Example: [{{"title": "...", "author": "...", "url": "...", "summary": "...", "pu
         try:
             if attempt > 0:
                 print(f"    Retry {attempt}/2, waiting 30s...")
-                time.sleep(30)
+                time.sleep(60)
             response_text = _call_claude_with_search(prompt, system=system, model=model)
             break
         except RuntimeError as e:
