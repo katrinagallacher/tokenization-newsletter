@@ -144,16 +144,18 @@ Example: [{{"title": "...", "author": "...", "url": "...", "summary": "...", "pu
             return []
 
     try:
-        # Clean up response - remove any markdown formatting
+        # Clean up response - extract JSON array from potentially messy output
         response_text = response_text.strip()
-        if response_text.startswith("```"):
-            response_text = response_text.split("\n", 1)[-1]
-            if response_text.endswith("```"):
-                response_text = response_text[:-3]
-            response_text = response_text.strip()
-
-        # Parse JSON
-        items = json.loads(response_text)
+        
+        # Find the JSON array in the response
+        start = response_text.find("[")
+        end = response_text.rfind("]")
+        if start == -1 or end == -1:
+            print("No JSON array found in web search response")
+            return []
+        
+        json_text = response_text[start:end + 1]
+        items = json.loads(json_text)
 
         posts = []
         for item in items:
