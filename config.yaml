@@ -62,17 +62,15 @@ web_search:
   enabled: true
 
 # Twitter/X accounts to monitor (manual for now - API is expensive)
-twitter:
-  accounts_to_check:
-    - "kaboroevich"     # Andrej Karpathy
-    - "sanderland_"     # Sander Land
-    - "huggingface"
+# twitter:
+#   accounts_to_check:
 
 # Claude API settings
 claude:
   model: "claude-sonnet-4-20250514"
-  max_tokens_summary: 300
-  max_tokens_editorial: 1000
+  web_search_model: "claude-haiku-4-5-20251001"
+  max_tokens_summary: 250
+  max_tokens_editorial: 500
 
 # Newsletter settings
 newsletter:
