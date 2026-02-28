@@ -43,7 +43,7 @@ class WebPost:
         }
 
 
-def _call_claude_with_search(prompt: str, system: str = "", model: str = "claude-sonnet-4-20250514") -> str:
+def _call_claude_with_search(prompt: str, system: str = "", model: str = "claude-haiku-4-5-20251001") -> str:
     """Call Claude API with web search tool enabled."""
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
@@ -88,7 +88,7 @@ def _call_claude_with_search(prompt: str, system: str = "", model: str = "claude
         raise RuntimeError(f"Claude API error {e.code}: {error_body}")
 
 
-def search_web_sources(keywords: list[str], lookback_days: int = 35, model: str = "claude-sonnet-4-20250514") -> list[WebPost]:
+def search_web_sources(keywords: list[str], lookback_days: int = 35, model: str = "claude-haiku-4-5-20251001") -> list[WebPost]:
     """Use Claude with web search to find tokenization posts across the web."""
     cutoff_date = (datetime.now() - timedelta(days=lookback_days)).strftime("%Y-%m-%d")
     today = datetime.now().strftime("%Y-%m-%d")
