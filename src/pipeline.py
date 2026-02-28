@@ -101,7 +101,7 @@ def collect_all(config: dict) -> list[dict]:
         web_posts = search_web_sources(
             keywords=primary_kw,
             lookback_days=lookback,
-            model=config.get("claude", {}).get("model", "claude-sonnet-4-20250514"),
+            model=config.get("claude", {}).get("web_search_model", "claude-haiku-4-5-20251001"),
         )
         print(f"   Found {len(web_posts)} posts")
         all_papers.extend(p.to_dict() for p in web_posts)
