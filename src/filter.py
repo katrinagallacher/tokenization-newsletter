@@ -149,35 +149,46 @@ def filter_and_rank_with_rest(
 
 # Keywords for topic classification
 TEXT_KEYWORDS = [
-    "language model", "llm", "nlp", "natural language", "text",
+    "natural language", "nlp", "text",
     "linguistic", "morpholog", "multilingual", "translation",
-    "subword", "vocabulary", "embedding", "corpus", "corpora",
+    "subword", "vocabulary", "corpus", "corpora",
     "machine translation", "sentiment", "named entity",
     "word", "sentence", "document", "grammar", "syntax",
-    "semantic", "language", "urdu", "turkish", "indonesian",
-    "arabic", "chinese", "japanese", "korean", "uralic",
-    "agglutinative", "inflect", "writing system",
+    "writing system", "script",
+    "urdu", "turkish", "indonesian", "arabic", "chinese",
+    "japanese", "korean", "uralic", "agglutinative", "inflect",
+    "malayalam", "hindi", "bengali", "swahili", "finnish",
 ]
 
 OTHER_KEYWORDS = [
     "speech", "audio", "acoustic", "asr", "voice", "speaker",
+    "multilingual speech", "speech recognition",
     "image", "visual", "video", "pixel", "diffusion",
+    "autoregressive image", "image generation", "image model",
     "robot", "embodied", "motor", "sensor",
     "dna", "protein", "genome", "chemical", "molecular",
     "music", "midi",
     "point cloud", "3d", "lidar",
+    "voxel", "mesh", "neural radiance",
 ]
 
 
 def classify_topic(paper: dict) -> str:
     """Classify a paper as 'text' or 'other' based on content."""
-    text = (paper.get("title", "") + " " + paper.get("abstract", "")).lower()
+    title = paper.get("title", "").lower()
+    abstract = paper.get("abstract", "").lower()
+    text = title + " " + abstract
 
-    text_score = sum(1 for kw in TEXT_KEYWORDS if kw in text)
-    other_score = sum(1 for kw in OTHER_KEYWORDS if kw in text)
-
-    if other_score > text_score and other_score >= 2:
+    # Check title first — strongest signal
+    title_other = sum(1 for kw in OTHER_KEYWORDS if kw in title)
+    if title_other >= 1:
         return "other"
+
+    # Then check full text
+    other_score = sum(1 for kw in OTHER_KEYWORDS if kw in text)
+    if other_score >= 2:
+        return "other"
+
     return "text"
 
 
