@@ -5,6 +5,7 @@ import urllib.parse
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 from dataclasses import dataclass
+import time
 
 
 @dataclass
@@ -104,6 +105,7 @@ def search_arxiv(keywords: list[str], categories: list[str], max_results: int = 
 
         except Exception as e:
             print(f"Error searching arxiv for '{keyword}': {e}")
+        time.sleep(5)
 
     # Deduplicate by arxiv_id
     seen = set()
