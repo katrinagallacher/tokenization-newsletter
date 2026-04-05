@@ -133,6 +133,8 @@ def fetch_lesswrong(keywords: list[str], lookback_days: int = 35) -> list[Post]:
 
 def fetch_alignment_forum(keywords: list[str], lookback_days: int = 35) -> list[Post]:
     """Fetch tokenization-related posts from EA Forum / Alignment Forum."""
+    import time
+    time.sleep(10)  # rate limit buffer — shares infra with LessWrong
     print("    Querying Alignment Forum...")
     raw = _query_forum(ALIGNMENT_FORUM_GRAPHQL, keywords, lookback_days, limit=100)
     filtered = _filter_by_keywords(raw, keywords)
