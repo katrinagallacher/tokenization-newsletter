@@ -54,15 +54,17 @@ def collect_all(config: dict) -> list[dict]:
     all_papers.extend(p.to_dict() for p in arxiv_papers)
 
     # Semantic Scholar
-    print("🔬 Collecting from Semantic Scholar...")
     if config.get("semantic_scholar", {}).get("enabled", True):
+        print("🔬 Collecting from Semantic Scholar...")
         s2_papers = search_semantic_scholar(
             keywords=primary_kw,
             max_results=config["semantic_scholar"]["max_results_per_query"],
             lookback_days=lookback,
-    )
-    print(f"   Found {len(s2_papers)} papers")
-    all_papers.extend(p.to_dict() for p in s2_papers)
+        )
+        print(f"   Found {len(s2_papers)} papers")
+        all_papers.extend(p.to_dict() for p in s2_papers)
+    else:
+        print("⏭️  Semantic Scholar disabled in config, skipping")
 
     # Hugging Face blog
     print("🤗 Collecting from Hugging Face blog...")
