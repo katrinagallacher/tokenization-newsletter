@@ -6,6 +6,7 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 from dataclasses import dataclass
 import time
+import random
 
 
 @dataclass
@@ -39,12 +40,38 @@ class Paper:
 ARXIV_API = "http://export.arxiv.org/api/query"
 ARXIV_NS = {"atom": "http://www.w3.org/2005/Atom", "arxiv": "http://arxiv.org/schemas/atom"}
 
+# arXiv asks for a descriptive User-Agent with contact info
+USER_AGENT = "TokenizationDigest/1.0 (newsletter pipeline; https://github.com)"
+
+
+def _fetch_with_retry(url: str, max_retries: int = 3, base_delay: float = 10.0) -> str:
+    """Fetch a URL with exponential backoff on 429s and timeouts."""
+    for attempt in range(max_retries):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+            with urllib.request.urlopen(req, timeout=60) as response:
+                return response.read().decode("utf-8")
+        except urllib.error.HTTPError as e:
+            if e.code == 429 and attempt < max_retries - 1:
+                delay = base_delay * (2 ** attempt) + random.uniform(0, 3)
+                print(f"  Rate limited (429), retrying in {delay:.0f}s (attempt {attempt + 1}/{max_retries})")
+                time.sleep(delay)
+            else:
+                raise
+        except (urllib.error.URLError, TimeoutError, OSError) as e:
+            if attempt < max_retries - 1:
+                delay = base_delay * (2 ** attempt) + random.uniform(0, 3)
+                print(f"  Timeout/error, retrying in {delay:.0f}s (attempt {attempt + 1}/{max_retries})")
+                time.sleep(delay)
+            else:
+                raise
+
 
 def search_arxiv(keywords: list[str], categories: list[str], max_results: int = 50, lookback_days: int = 35) -> list[Paper]:
     """Search arxiv for papers matching keywords in given categories."""
     papers = []
 
-    for keyword in keywords:
+    for i, keyword in enumerate(keywords):
         # Build query: keyword in title or abstract, within categories
         cat_query = " OR ".join(f"cat:{cat}" for cat in categories)
         query = f"(ti:\"{keyword}\" OR abs:\"{keyword}\") AND ({cat_query})"
@@ -60,8 +87,7 @@ def search_arxiv(keywords: list[str], categories: list[str], max_results: int = 
         url = f"{ARXIV_API}?{urllib.parse.urlencode(params)}"
 
         try:
-            with urllib.request.urlopen(url, timeout=30) as response:
-                data = response.read().decode("utf-8")
+            data = _fetch_with_retry(url)
 
             root = ET.fromstring(data)
             cutoff = datetime.now() - timedelta(days=lookback_days)
@@ -105,7 +131,11 @@ def search_arxiv(keywords: list[str], categories: list[str], max_results: int = 
 
         except Exception as e:
             print(f"Error searching arxiv for '{keyword}': {e}")
-        time.sleep(5)
+
+        # Wait between keywords — longer pause to stay well within arXiv's limits
+        if i < len(keywords) - 1:
+            delay = 10 + random.uniform(0, 5)
+            time.sleep(delay)
 
     # Deduplicate by arxiv_id
     seen = set()
@@ -133,3 +163,4 @@ if __name__ == "__main__":
     print(f"Found {len(papers)} papers from arxiv")
     for p in papers[:5]:
         print(f"  - {p.title} ({p.published})")
+    
