@@ -44,37 +44,54 @@ ARXIV_NS = {"atom": "http://www.w3.org/2005/Atom", "arxiv": "http://arxiv.org/sc
 USER_AGENT = "TokenizationDigest/1.0 (newsletter pipeline; https://github.com)"
 
 
-def _fetch_with_retry(url: str, max_retries: int = 3, base_delay: float = 10.0) -> str:
+def _fetch_with_retry(url: str, headers: dict = None, max_retries: int = 4, base_delay: float = 15.0) -> str:
     """Fetch a URL with exponential backoff on 429s and timeouts."""
+    if headers is None:
+        headers = {}
+    headers.setdefault("User-Agent", USER_AGENT)
+
     for attempt in range(max_retries):
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+            req = urllib.request.Request(url, headers=headers)
             with urllib.request.urlopen(req, timeout=60) as response:
                 return response.read().decode("utf-8")
         except urllib.error.HTTPError as e:
-            if e.code == 429 and attempt < max_retries - 1:
-                delay = base_delay * (2 ** attempt) + random.uniform(0, 3)
-                print(f"  Rate limited (429), retrying in {delay:.0f}s (attempt {attempt + 1}/{max_retries})")
+            if e.code in (429, 503) and attempt < max_retries - 1:
+                delay = base_delay * (2 ** attempt) + random.uniform(0, 5)
+                print(f"  HTTP {e.code}, retrying in {delay:.0f}s (attempt {attempt + 1}/{max_retries})")
                 time.sleep(delay)
             else:
                 raise
         except (urllib.error.URLError, TimeoutError, OSError) as e:
             if attempt < max_retries - 1:
-                delay = base_delay * (2 ** attempt) + random.uniform(0, 3)
+                delay = base_delay * (2 ** attempt) + random.uniform(0, 5)
                 print(f"  Timeout/error, retrying in {delay:.0f}s (attempt {attempt + 1}/{max_retries})")
                 time.sleep(delay)
             else:
                 raise
 
 
-def search_arxiv(keywords: list[str], categories: list[str], max_results: int = 50, lookback_days: int = 35) -> list[Paper]:
-    """Search arxiv for papers matching keywords in given categories."""
-    papers = []
+def _batch_keywords(keywords: list[str], batch_size: int = 4) -> list[list[str]]:
+    """Split keywords into batches for combined queries."""
+    return [keywords[i:i + batch_size] for i in range(0, len(keywords), batch_size)]
 
-    for i, keyword in enumerate(keywords):
-        # Build query: keyword in title or abstract, within categories
+
+def search_arxiv(keywords: list[str], categories: list[str], max_results: int = 50, lookback_days: int = 35) -> list[Paper]:
+    """Search arxiv for papers matching keywords in given categories.
+
+    Keywords are batched into combined OR queries to minimize the number
+    of API requests and avoid rate limiting.
+    """
+    papers = []
+    batches = _batch_keywords(keywords, batch_size=4)
+
+    for i, batch in enumerate(batches):
+        # Combine keywords in this batch into a single OR query
+        keyword_query = " OR ".join(
+            f'ti:"{kw}" OR abs:"{kw}"' for kw in batch
+        )
         cat_query = " OR ".join(f"cat:{cat}" for cat in categories)
-        query = f"(ti:\"{keyword}\" OR abs:\"{keyword}\") AND ({cat_query})"
+        query = f"({keyword_query}) AND ({cat_query})"
 
         params = {
             "search_query": query,
@@ -129,12 +146,14 @@ def search_arxiv(keywords: list[str], categories: list[str], max_results: int = 
                 )
                 papers.append(paper)
 
-        except Exception as e:
-            print(f"Error searching arxiv for '{keyword}': {e}")
+            print(f"  Batch {i + 1}/{len(batches)} ({', '.join(batch)}): found {len(papers)} papers so far")
 
-        # Wait between keywords — longer pause to stay well within arXiv's limits
-        if i < len(keywords) - 1:
-            delay = 10 + random.uniform(0, 5)
+        except Exception as e:
+            print(f"Error searching arxiv for batch [{', '.join(batch)}]: {e}")
+
+        # Wait between batches
+        if i < len(batches) - 1:
+            delay = 15 + random.uniform(0, 5)
             time.sleep(delay)
 
     # Deduplicate by arxiv_id
