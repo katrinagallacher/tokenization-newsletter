@@ -34,6 +34,7 @@ arxiv:
 
 # Semantic Scholar
 semantic_scholar:
+  enabled: false
   max_results_per_query: 30
   fields_of_study:
     - "Computer Science"
