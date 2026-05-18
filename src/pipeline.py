@@ -15,7 +15,7 @@ import json
 import os
 import sys
 import time
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from pathlib import Path
 
 import yaml
@@ -46,7 +46,7 @@ def get_previous_month_range() -> tuple[date, date, str]:
     # First day of current month
     first_of_current = today.replace(day=1)
     # Last day of previous month
-    end_date = first_of_current - __import__("datetime").timedelta(days=1)
+    end_date = first_of_current - timedelta(days=1)
     # First day of previous month
     start_date = end_date.replace(day=1)
     month_label = start_date.strftime("%B %Y")
@@ -128,8 +128,7 @@ def collect_all(config: dict, start_date: date, end_date: date) -> list[dict]:
         web_model = config.get("claude", {}).get("web_search_model", "claude-haiku-4-5-20251001")
         web_posts = search_web_sources(
             keywords=primary_kw,
-            start_date=start_str,
-            end_date=end_str,
+            lookback_days=lookback,
             model=web_model,
         )
         print(f"   Found {len(web_posts)} posts")
