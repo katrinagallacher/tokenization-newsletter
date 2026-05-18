@@ -58,9 +58,11 @@ def collect_all(config: dict, start_date: date, end_date: date) -> list[dict]:
     all_papers = []
     primary_kw = config["keywords"]["primary"]
 
-    # Convert to strings for collectors that need them
     start_str = start_date.isoformat()
     end_str = end_date.isoformat()
+
+    # Fallback for collectors not yet updated to start_date/end_date
+    lookback = (date.today() - start_date).days
 
     # Arxiv
     print("📚 Collecting from arXiv...")
@@ -93,8 +95,7 @@ def collect_all(config: dict, start_date: date, end_date: date) -> list[dict]:
     hf_posts = fetch_huggingface_blog(
         rss_url=config["huggingface"]["blog_rss"],
         keywords=primary_kw,
-        start_date=start_str,
-        end_date=end_str,
+        lookback_days=lookback,
     )
     print(f"   Found {len(hf_posts)} posts")
     all_papers.extend(p.to_dict() for p in hf_posts)
@@ -103,7 +104,7 @@ def collect_all(config: dict, start_date: date, end_date: date) -> list[dict]:
     feeds = config.get("google_scholar", {}).get("alert_feeds", [])
     if feeds:
         print("🎓 Collecting from Google Scholar alerts...")
-        gs_papers = fetch_google_scholar_alerts(feeds, start_date=start_str, end_date=end_str)
+        gs_papers = fetch_google_scholar_alerts(feeds, lookback_days=lookback)
         print(f"   Found {len(gs_papers)} papers")
         all_papers.extend(p.to_dict() for p in gs_papers)
     else:
@@ -111,13 +112,13 @@ def collect_all(config: dict, start_date: date, end_date: date) -> list[dict]:
 
     # LessWrong
     print("📝 Collecting from LessWrong...")
-    lw_posts = fetch_lesswrong(keywords=primary_kw, start_date=start_str, end_date=end_str)
+    lw_posts = fetch_lesswrong(keywords=primary_kw, lookback_days=lookback)
     print(f"   Found {len(lw_posts)} posts")
     all_papers.extend(p.to_dict() for p in lw_posts)
 
     # Alignment Forum
     print("🔍 Collecting from Alignment Forum...")
-    af_posts = fetch_alignment_forum(keywords=primary_kw, start_date=start_str, end_date=end_str)
+    af_posts = fetch_alignment_forum(keywords=primary_kw, lookback_days=lookback)
     print(f"   Found {len(af_posts)} posts")
     all_papers.extend(p.to_dict() for p in af_posts)
 
