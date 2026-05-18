@@ -6,7 +6,7 @@ import json
 import time
 import random
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 from dataclasses import dataclass, field
 
 
@@ -50,11 +50,7 @@ def _get_s2_headers() -> dict:
 
 
 def _fetch_with_retry(url: str, headers: dict = None, max_retries: int = 5, base_delay: float = 30.0) -> str:
-    """Fetch a URL with exponential backoff on 429s and timeouts.
-
-    S2's unauthenticated pool (1000 req/s shared) can throttle during
-    heavy use. The strategy: wait long enough for the congestion to pass.
-    """
+    """Fetch a URL with exponential backoff on 429s and timeouts."""
     if headers is None:
         headers = {}
     headers.setdefault("User-Agent", USER_AGENT)
@@ -66,12 +62,10 @@ def _fetch_with_retry(url: str, headers: dict = None, max_retries: int = 5, base
                 return response.read().decode("utf-8")
         except urllib.error.HTTPError as e:
             if e.code in (429, 503) and attempt < max_retries - 1:
-                # Respect Retry-After header if present
                 retry_after = e.headers.get("Retry-After")
                 if retry_after and retry_after.isdigit():
                     delay = int(retry_after) + random.uniform(1, 5)
                 else:
-                    # 30s, 60s, 120s, 240s — patient enough to outlast congestion
                     delay = base_delay * (2 ** attempt) + random.uniform(1, 10)
                 print(f"  HTTP {e.code}, retrying in {delay:.0f}s (attempt {attempt + 1}/{max_retries})")
                 time.sleep(delay)
@@ -86,11 +80,17 @@ def _fetch_with_retry(url: str, headers: dict = None, max_retries: int = 5, base
                 raise
 
 
-def search_semantic_scholar(keywords: list[str], max_results: int = 30, lookback_days: int = 35) -> list[Paper]:
-    """Search Semantic Scholar for tokenization-related papers."""
+def search_semantic_scholar(keywords: list[str], max_results: int = 30,
+                            start_date: str = "", end_date: str = "",
+                            lookback_days: int = 35) -> list[Paper]:
+    """Search Semantic Scholar for tokenization-related papers.
+
+    Args:
+        start_date: ISO date string (e.g. "2026-04-01").
+        end_date:   ISO date string (e.g. "2026-04-30").
+        lookback_days: Fallback if start_date/end_date are not provided.
+    """
     papers = []
-    cutoff = datetime.now() - timedelta(days=lookback_days)
-    cutoff_str = cutoff.strftime("%Y-%m-%d")
     headers = _get_s2_headers()
     has_api_key = "x-api-key" in headers
 
@@ -99,12 +99,20 @@ def search_semantic_scholar(keywords: list[str], max_results: int = 30, lookback
     else:
         print("  No S2_API_KEY set — using unauthenticated access (shared rate limit)")
 
+    # Build date range for S2 API
+    if start_date and end_date:
+        date_range = f"{start_date}:{end_date}"
+    else:
+        from datetime import timedelta
+        cutoff = datetime.now() - timedelta(days=lookback_days)
+        date_range = f"{cutoff.strftime('%Y-%m-%d')}:"
+
     for i, keyword in enumerate(keywords):
         params = {
             "query": keyword,
             "limit": min(max_results, 100),
             "fields": "title,authors,abstract,url,publicationDate,citationCount,venue,externalIds",
-            "publicationDateOrYear": f"{cutoff_str}:",
+            "publicationDateOrYear": date_range,
             "fieldsOfStudy": "Computer Science",
         }
 
@@ -120,7 +128,6 @@ def search_semantic_scholar(keywords: list[str], max_results: int = 30, lookback
                 authors = [a.get("name", "") for a in item.get("authors", [])]
                 pub_date = item.get("publicationDate", "")
 
-                # Get arxiv URL if available, otherwise S2 URL
                 external = item.get("externalIds", {}) or {}
                 if external.get("ArXiv"):
                     paper_url = f"https://arxiv.org/abs/{external['ArXiv']}"
@@ -144,12 +151,11 @@ def search_semantic_scholar(keywords: list[str], max_results: int = 30, lookback
         except Exception as e:
             print(f"Error searching Semantic Scholar for '{keyword}': {e}")
 
-        # Pace requests: ~3s with key, ~5s without (gentle, not aggressive)
         if i < len(keywords) - 1:
             delay = 2 + random.uniform(0, 1) if has_api_key else 5 + random.uniform(0, 3)
             time.sleep(delay)
 
-    # Deduplicate by title similarity (simple lowercase match)
+    # Deduplicate by title
     seen_titles = set()
     unique = []
     for p in papers:
@@ -170,8 +176,8 @@ if __name__ == "__main__":
     papers = search_semantic_scholar(
         keywords=config["keywords"]["primary"],
         max_results=config["semantic_scholar"]["max_results_per_query"],
-        lookback_days=config["newsletter"]["lookback_days"],
     )
     print(f"Found {len(papers)} papers from Semantic Scholar")
     for p in papers[:5]:
         print(f"  - {p.title} ({p.published}) [citations: {p.citation_count}]")
+        
