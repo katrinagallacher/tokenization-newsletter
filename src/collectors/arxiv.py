@@ -1,12 +1,13 @@
-"""Collect tokenization-related papers from arxiv API."""
+"""Collect tokenization-related papers from Semantic Scholar API."""
 
 import urllib.request
 import urllib.parse
-import xml.etree.ElementTree as ET
-from datetime import datetime
-from dataclasses import dataclass
+import json
 import time
 import random
+import os
+from datetime import datetime
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -16,13 +17,10 @@ class Paper:
     abstract: str
     url: str
     published: str
-    source: str = "arxiv"
-    arxiv_id: str = ""
-    categories: list[str] = None
-
-    def __post_init__(self):
-        if self.categories is None:
-            self.categories = []
+    source: str = "semantic_scholar"
+    paper_id: str = ""
+    citation_count: int = 0
+    venue: str = ""
 
     def to_dict(self) -> dict:
         return {
@@ -32,18 +30,26 @@ class Paper:
             "url": self.url,
             "published": self.published,
             "source": self.source,
-            "arxiv_id": self.arxiv_id,
-            "categories": self.categories,
+            "paper_id": self.paper_id,
+            "citation_count": self.citation_count,
+            "venue": self.venue,
         }
 
 
-ARXIV_API = "http://export.arxiv.org/api/query"
-ARXIV_NS = {"atom": "http://www.w3.org/2005/Atom", "arxiv": "http://arxiv.org/schemas/atom"}
-
+S2_API = "https://api.semanticscholar.org/graph/v1/paper/search"
 USER_AGENT = "TokenizationDigest/1.0 (newsletter pipeline; https://github.com)"
 
 
-def _fetch_with_retry(url: str, headers: dict = None, max_retries: int = 4, base_delay: float = 15.0) -> str:
+def _get_s2_headers() -> dict:
+    """Build request headers, including API key if available."""
+    headers = {"User-Agent": USER_AGENT}
+    api_key = os.environ.get("S2_API_KEY")
+    if api_key:
+        headers["x-api-key"] = api_key
+    return headers
+
+
+def _fetch_with_retry(url: str, headers: dict = None, max_retries: int = 5, base_delay: float = 30.0) -> str:
     """Fetch a URL with exponential backoff on 429s and timeouts."""
     if headers is None:
         headers = {}
@@ -56,124 +62,106 @@ def _fetch_with_retry(url: str, headers: dict = None, max_retries: int = 4, base
                 return response.read().decode("utf-8")
         except urllib.error.HTTPError as e:
             if e.code in (429, 503) and attempt < max_retries - 1:
-                delay = base_delay * (2 ** attempt) + random.uniform(0, 5)
+                retry_after = e.headers.get("Retry-After")
+                if retry_after and retry_after.isdigit():
+                    delay = int(retry_after) + random.uniform(1, 5)
+                else:
+                    delay = base_delay * (2 ** attempt) + random.uniform(1, 10)
                 print(f"  HTTP {e.code}, retrying in {delay:.0f}s (attempt {attempt + 1}/{max_retries})")
                 time.sleep(delay)
             else:
                 raise
         except (urllib.error.URLError, TimeoutError, OSError) as e:
             if attempt < max_retries - 1:
-                delay = base_delay * (2 ** attempt) + random.uniform(0, 5)
+                delay = base_delay * (2 ** attempt) + random.uniform(1, 10)
                 print(f"  Timeout/error, retrying in {delay:.0f}s (attempt {attempt + 1}/{max_retries})")
                 time.sleep(delay)
             else:
                 raise
 
 
-def _batch_keywords(keywords: list[str], batch_size: int = 4) -> list[list[str]]:
-    """Split keywords into batches for combined queries."""
-    return [keywords[i:i + batch_size] for i in range(0, len(keywords), batch_size)]
-
-
-def search_arxiv(keywords: list[str], categories: list[str], max_results: int = 50,
-                 start_date: str = "", end_date: str = "",
-                 lookback_days: int = 35) -> list[Paper]:
-    """Search arxiv for papers matching keywords in given categories.
+def search_semantic_scholar(keywords: list[str], max_results: int = 30,
+                            start_date: str = "", end_date: str = "",
+                            lookback_days: int = 35) -> list[Paper]:
+    """Search Semantic Scholar for tokenization-related papers.
 
     Args:
-        start_date: ISO date string (e.g. "2026-04-01"). If provided with end_date,
-                    only papers published in this range are returned.
+        start_date: ISO date string (e.g. "2026-04-01").
         end_date:   ISO date string (e.g. "2026-04-30").
         lookback_days: Fallback if start_date/end_date are not provided.
     """
     papers = []
-    batches = _batch_keywords(keywords, batch_size=4)
+    headers = _get_s2_headers()
+    has_api_key = "x-api-key" in headers
 
-    # Determine date filter
+    if has_api_key:
+        print("  Using S2 API key (authenticated)")
+    else:
+        print("  No S2_API_KEY set — using unauthenticated access (shared rate limit)")
+
+    # Build date range for S2 API
     if start_date and end_date:
-        cutoff_start = datetime.fromisoformat(start_date)
-        cutoff_end = datetime.fromisoformat(end_date)
+        date_range = f"{start_date}:{end_date}"
     else:
         from datetime import timedelta
-        cutoff_end = datetime.now()
-        cutoff_start = cutoff_end - timedelta(days=lookback_days)
+        cutoff = datetime.now() - timedelta(days=lookback_days)
+        date_range = f"{cutoff.strftime('%Y-%m-%d')}:"
 
-    for i, batch in enumerate(batches):
-        keyword_query = " OR ".join(
-            f'ti:"{kw}" OR abs:"{kw}"' for kw in batch
-        )
-        cat_query = " OR ".join(f"cat:{cat}" for cat in categories)
-        query = f"({keyword_query}) AND ({cat_query})"
-
+    for i, keyword in enumerate(keywords):
         params = {
-            "search_query": query,
-            "start": 0,
-            "max_results": max_results,
-            "sortBy": "submittedDate",
-            "sortOrder": "descending",
+            "query": keyword,
+            "limit": min(max_results, 100),
+            "fields": "title,authors,abstract,url,publicationDate,citationCount,venue,externalIds",
+            "publicationDateOrYear": date_range,
+            "fieldsOfStudy": "Computer Science",
         }
 
-        url = f"{ARXIV_API}?{urllib.parse.urlencode(params)}"
+        url = f"{S2_API}?{urllib.parse.urlencode(params)}"
 
         try:
-            data = _fetch_with_retry(url)
+            data = json.loads(_fetch_with_retry(url, headers=headers))
 
-            root = ET.fromstring(data)
-
-            for entry in root.findall("atom:entry", ARXIV_NS):
-                published_str = entry.find("atom:published", ARXIV_NS).text
-                published_date = datetime.fromisoformat(published_str.replace("Z", "+00:00"))
-                pub_naive = published_date.replace(tzinfo=None)
-
-                # Filter to date range
-                if pub_naive < cutoff_start or pub_naive > cutoff_end.replace(hour=23, minute=59, second=59):
+            for item in data.get("data", []):
+                if not item.get("title") or not item.get("abstract"):
                     continue
 
-                title = entry.find("atom:title", ARXIV_NS).text.strip().replace("\n", " ")
-                abstract = entry.find("atom:summary", ARXIV_NS).text.strip().replace("\n", " ")
+                authors = [a.get("name", "") for a in item.get("authors", [])]
+                pub_date = item.get("publicationDate", "")
 
-                authors = []
-                for author in entry.findall("atom:author", ARXIV_NS):
-                    name = author.find("atom:name", ARXIV_NS).text
-                    authors.append(name)
-
-                link = entry.find("atom:id", ARXIV_NS).text
-                arxiv_id = link.split("/abs/")[-1]
-
-                cats = []
-                for cat in entry.findall("arxiv:primary_category", ARXIV_NS):
-                    cats.append(cat.get("term"))
-                for cat in entry.findall("atom:category", ARXIV_NS):
-                    term = cat.get("term")
-                    if term not in cats:
-                        cats.append(term)
+                external = item.get("externalIds", {}) or {}
+                if external.get("ArXiv"):
+                    paper_url = f"https://arxiv.org/abs/{external['ArXiv']}"
+                else:
+                    paper_url = item.get("url", "")
 
                 paper = Paper(
-                    title=title,
+                    title=item["title"],
                     authors=authors,
-                    abstract=abstract,
-                    url=f"https://arxiv.org/abs/{arxiv_id}",
-                    published=published_str[:10],
-                    arxiv_id=arxiv_id,
-                    categories=cats,
+                    abstract=item.get("abstract", ""),
+                    url=paper_url,
+                    published=pub_date or "",
+                    paper_id=item.get("paperId", ""),
+                    citation_count=item.get("citationCount", 0) or 0,
+                    venue=item.get("venue", "") or "",
                 )
                 papers.append(paper)
 
-            print(f"  Batch {i + 1}/{len(batches)} ({', '.join(batch)}): found {len(papers)} papers so far")
+            print(f"  Keyword '{keyword}': {len(data.get('data', []))} results")
 
         except Exception as e:
-            print(f"Error searching arxiv for batch [{', '.join(batch)}]: {e}")
+            print(f"Error searching Semantic Scholar for '{keyword}': {e}")
 
-        if i < len(batches) - 1:
-            delay = 15 + random.uniform(0, 5)
+        if i < len(keywords) - 1:
+            delay = 2 + random.uniform(0, 1) if has_api_key else 5 + random.uniform(0, 3)
             time.sleep(delay)
 
-    # Deduplicate by arxiv_id
-    seen = set()
+    # Deduplicate by title
+    seen_titles = set()
     unique = []
     for p in papers:
-        if p.arxiv_id not in seen:
-            seen.add(p.arxiv_id)
+        normalized = p.title.lower().strip()
+        if normalized not in seen_titles:
+            seen_titles.add(normalized)
             unique.append(p)
 
     return unique
@@ -185,11 +173,11 @@ if __name__ == "__main__":
     with open("config.yaml") as f:
         config = yaml.safe_load(f)
 
-    papers = search_arxiv(
+    papers = search_semantic_scholar(
         keywords=config["keywords"]["primary"],
-        categories=config["arxiv"]["categories"],
-        max_results=config["arxiv"]["max_results_per_query"],
+        max_results=config["semantic_scholar"]["max_results_per_query"],
     )
-    print(f"Found {len(papers)} papers from arxiv")
+    print(f"Found {len(papers)} papers from Semantic Scholar")
     for p in papers[:5]:
-        print(f"  - {p.title} ({p.published})")
+        print(f"  - {p.title} ({p.published}) [citations: {p.citation_count}]")
+
