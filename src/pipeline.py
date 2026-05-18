@@ -15,7 +15,7 @@ import json
 import os
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, date
 from pathlib import Path
 
 import yaml
@@ -36,11 +36,31 @@ def load_config(config_path: str = "config.yaml") -> dict:
         return yaml.safe_load(f)
 
 
-def collect_all(config: dict) -> list[dict]:
+def get_previous_month_range() -> tuple[date, date, str]:
+    """Return (start_date, end_date, month_label) for the previous calendar month.
+
+    For example, if today is 2026-05-18, returns:
+        (date(2026, 4, 1), date(2026, 4, 30), "April 2026")
+    """
+    today = date.today()
+    # First day of current month
+    first_of_current = today.replace(day=1)
+    # Last day of previous month
+    end_date = first_of_current - __import__("datetime").timedelta(days=1)
+    # First day of previous month
+    start_date = end_date.replace(day=1)
+    month_label = start_date.strftime("%B %Y")
+    return start_date, end_date, month_label
+
+
+def collect_all(config: dict, start_date: date, end_date: date) -> list[dict]:
     """Run all collectors and return combined raw papers."""
     all_papers = []
-    lookback = config["newsletter"]["lookback_days"]
     primary_kw = config["keywords"]["primary"]
+
+    # Convert to strings for collectors that need them
+    start_str = start_date.isoformat()
+    end_str = end_date.isoformat()
 
     # Arxiv
     print("📚 Collecting from arXiv...")
@@ -48,7 +68,8 @@ def collect_all(config: dict) -> list[dict]:
         keywords=primary_kw,
         categories=config["arxiv"]["categories"],
         max_results=config["arxiv"]["max_results_per_query"],
-        lookback_days=lookback,
+        start_date=start_str,
+        end_date=end_str,
     )
     print(f"   Found {len(arxiv_papers)} papers")
     all_papers.extend(p.to_dict() for p in arxiv_papers)
@@ -59,7 +80,8 @@ def collect_all(config: dict) -> list[dict]:
         s2_papers = search_semantic_scholar(
             keywords=primary_kw,
             max_results=config["semantic_scholar"]["max_results_per_query"],
-            lookback_days=lookback,
+            start_date=start_str,
+            end_date=end_str,
         )
         print(f"   Found {len(s2_papers)} papers")
         all_papers.extend(p.to_dict() for p in s2_papers)
@@ -71,7 +93,8 @@ def collect_all(config: dict) -> list[dict]:
     hf_posts = fetch_huggingface_blog(
         rss_url=config["huggingface"]["blog_rss"],
         keywords=primary_kw,
-        lookback_days=lookback,
+        start_date=start_str,
+        end_date=end_str,
     )
     print(f"   Found {len(hf_posts)} posts")
     all_papers.extend(p.to_dict() for p in hf_posts)
@@ -80,7 +103,7 @@ def collect_all(config: dict) -> list[dict]:
     feeds = config.get("google_scholar", {}).get("alert_feeds", [])
     if feeds:
         print("🎓 Collecting from Google Scholar alerts...")
-        gs_papers = fetch_google_scholar_alerts(feeds, lookback_days=lookback)
+        gs_papers = fetch_google_scholar_alerts(feeds, start_date=start_str, end_date=end_str)
         print(f"   Found {len(gs_papers)} papers")
         all_papers.extend(p.to_dict() for p in gs_papers)
     else:
@@ -88,24 +111,24 @@ def collect_all(config: dict) -> list[dict]:
 
     # LessWrong
     print("📝 Collecting from LessWrong...")
-    lw_posts = fetch_lesswrong(keywords=primary_kw, lookback_days=lookback)
+    lw_posts = fetch_lesswrong(keywords=primary_kw, start_date=start_str, end_date=end_str)
     print(f"   Found {len(lw_posts)} posts")
     all_papers.extend(p.to_dict() for p in lw_posts)
 
     # Alignment Forum
     print("🔍 Collecting from Alignment Forum...")
-    af_posts = fetch_alignment_forum(keywords=primary_kw, lookback_days=lookback)
+    af_posts = fetch_alignment_forum(keywords=primary_kw, start_date=start_str, end_date=end_str)
     print(f"   Found {len(af_posts)} posts")
     all_papers.extend(p.to_dict() for p in af_posts)
 
     # Web search (Medium, Substack, Emergent Mind, blogs, Twitter)
-    # Uses Haiku model (cheaper, separate rate limit from Sonnet)
     if os.environ.get("ANTHROPIC_API_KEY"):
         print("🌐 Collecting from web (Medium, Substack, blogs, Emergent Mind)...")
         web_model = config.get("claude", {}).get("web_search_model", "claude-haiku-4-5-20251001")
         web_posts = search_web_sources(
             keywords=primary_kw,
-            lookback_days=lookback,
+            start_date=start_str,
+            end_date=end_str,
             model=web_model,
         )
         print(f"   Found {len(web_posts)} posts")
@@ -121,14 +144,18 @@ def run_pipeline(config_path: str = "config.yaml", issue_number: int = 1,
     """Run the full newsletter pipeline."""
     config = load_config(config_path)
 
+    # Determine date range: previous complete calendar month
+    start_date, end_date, month_label = get_previous_month_range()
+
     print(f"\n{'='*60}")
     print(f"  Tokenization Digest — Issue #{issue_number}")
-    print(f"  {datetime.now().strftime('%B %Y')}")
+    print(f"  {month_label}")
+    print(f"  Collecting papers from {start_date} to {end_date}")
     print(f"{'='*60}\n")
 
     # Step 1: Collect
     print("STEP 1: Collecting papers...")
-    all_papers = collect_all(config)
+    all_papers = collect_all(config, start_date, end_date)
     print(f"\n📊 Total collected: {len(all_papers)} items\n")
 
     # Step 2: Filter & rank
@@ -137,7 +164,7 @@ def run_pipeline(config_path: str = "config.yaml", issue_number: int = 1,
         papers=all_papers,
         primary_keywords=config["keywords"]["primary"],
         secondary_keywords=config["keywords"]["secondary"],
-        max_items=20,  # get more candidates for categorization
+        max_items=20,
     )
 
     # Categorize into sections
@@ -196,20 +223,19 @@ def run_pipeline(config_path: str = "config.yaml", issue_number: int = 1,
 
     # Step 4: Format output
     print("STEP 4: Formatting newsletter...")
-    date_str = datetime.now().strftime("%B %Y")
 
     md_output = generate_markdown(text_papers=text_papers, text_blogs=text_blogs,
                                   other_papers=other_papers, rest=rest,
-                                  issue_number=issue_number, date=date_str)
+                                  issue_number=issue_number, date=month_label)
     html_output = generate_html(text_papers=text_papers, text_blogs=text_blogs,
                                 other_papers=other_papers, rest=rest,
-                                issue_number=issue_number, date=date_str)
+                                issue_number=issue_number, date=month_label)
 
     # Save outputs
     output_dir = Path("output")
     output_dir.mkdir(exist_ok=True)
 
-    date_slug = datetime.now().strftime("%Y%m")
+    date_slug = start_date.strftime("%Y%m")
     md_path = output_dir / f"issue_{issue_number}_{date_slug}.md"
     html_path = output_dir / f"issue_{issue_number}_{date_slug}.html"
     json_path = output_dir / f"issue_{issue_number}_{date_slug}_data.json"
@@ -223,7 +249,7 @@ def run_pipeline(config_path: str = "config.yaml", issue_number: int = 1,
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump({
             "issue": issue_number,
-            "date": date_str,
+            "date": month_label,
             "text_papers": text_papers,
             "text_blogs": text_blogs,
             "other_papers": other_papers,
@@ -263,3 +289,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
