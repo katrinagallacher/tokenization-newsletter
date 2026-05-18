@@ -3,7 +3,7 @@
 import urllib.request
 import urllib.parse
 import xml.etree.ElementTree as ET
-from datetime import datetime, timedelta
+from datetime import datetime
 from dataclasses import dataclass
 import time
 import random
@@ -40,7 +40,6 @@ class Paper:
 ARXIV_API = "http://export.arxiv.org/api/query"
 ARXIV_NS = {"atom": "http://www.w3.org/2005/Atom", "arxiv": "http://arxiv.org/schemas/atom"}
 
-# arXiv asks for a descriptive User-Agent with contact info
 USER_AGENT = "TokenizationDigest/1.0 (newsletter pipeline; https://github.com)"
 
 
@@ -76,17 +75,30 @@ def _batch_keywords(keywords: list[str], batch_size: int = 4) -> list[list[str]]
     return [keywords[i:i + batch_size] for i in range(0, len(keywords), batch_size)]
 
 
-def search_arxiv(keywords: list[str], categories: list[str], max_results: int = 50, lookback_days: int = 35) -> list[Paper]:
+def search_arxiv(keywords: list[str], categories: list[str], max_results: int = 50,
+                 start_date: str = "", end_date: str = "",
+                 lookback_days: int = 35) -> list[Paper]:
     """Search arxiv for papers matching keywords in given categories.
 
-    Keywords are batched into combined OR queries to minimize the number
-    of API requests and avoid rate limiting.
+    Args:
+        start_date: ISO date string (e.g. "2026-04-01"). If provided with end_date,
+                    only papers published in this range are returned.
+        end_date:   ISO date string (e.g. "2026-04-30").
+        lookback_days: Fallback if start_date/end_date are not provided.
     """
     papers = []
     batches = _batch_keywords(keywords, batch_size=4)
 
+    # Determine date filter
+    if start_date and end_date:
+        cutoff_start = datetime.fromisoformat(start_date)
+        cutoff_end = datetime.fromisoformat(end_date)
+    else:
+        from datetime import timedelta
+        cutoff_end = datetime.now()
+        cutoff_start = cutoff_end - timedelta(days=lookback_days)
+
     for i, batch in enumerate(batches):
-        # Combine keywords in this batch into a single OR query
         keyword_query = " OR ".join(
             f'ti:"{kw}" OR abs:"{kw}"' for kw in batch
         )
@@ -107,13 +119,14 @@ def search_arxiv(keywords: list[str], categories: list[str], max_results: int = 
             data = _fetch_with_retry(url)
 
             root = ET.fromstring(data)
-            cutoff = datetime.now() - timedelta(days=lookback_days)
 
             for entry in root.findall("atom:entry", ARXIV_NS):
                 published_str = entry.find("atom:published", ARXIV_NS).text
                 published_date = datetime.fromisoformat(published_str.replace("Z", "+00:00"))
+                pub_naive = published_date.replace(tzinfo=None)
 
-                if published_date.replace(tzinfo=None) < cutoff:
+                # Filter to date range
+                if pub_naive < cutoff_start or pub_naive > cutoff_end.replace(hour=23, minute=59, second=59):
                     continue
 
                 title = entry.find("atom:title", ARXIV_NS).text.strip().replace("\n", " ")
@@ -151,7 +164,6 @@ def search_arxiv(keywords: list[str], categories: list[str], max_results: int = 
         except Exception as e:
             print(f"Error searching arxiv for batch [{', '.join(batch)}]: {e}")
 
-        # Wait between batches
         if i < len(batches) - 1:
             delay = 15 + random.uniform(0, 5)
             time.sleep(delay)
@@ -177,9 +189,7 @@ if __name__ == "__main__":
         keywords=config["keywords"]["primary"],
         categories=config["arxiv"]["categories"],
         max_results=config["arxiv"]["max_results_per_query"],
-        lookback_days=config["newsletter"]["lookback_days"],
     )
     print(f"Found {len(papers)} papers from arxiv")
     for p in papers[:5]:
         print(f"  - {p.title} ({p.published})")
-    
